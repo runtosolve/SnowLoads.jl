@@ -80,6 +80,11 @@ Selecting a standard that is not built yet (for example `:NBCC_2020`) raises
   | ASCE 7-22 | ultimate level (risk-targeted, per Risk Category) | 1.0 × S  (1.2D + 1.0S) | 0.7 × S  (D + 0.7S) |
 
   Enter `pg` exactly as the Hazard Tool reports it for the selected standard; do not pre-factor it.
+  Dead load and other loads are **not** combined by the package. Scripts that build load combinations
+  should take their snow terms from `SnowLoads.snow_combination(standard, method)` instead of hard-coding
+  0.7 / 1.0 / 1.6 / 0.3 / 0.5: it returns `design` (S → design-level factor, same as `result.factor`),
+  `companion` (factor on the design-level snow when snow accompanies wind or live load) and ready-made
+  `principal_label` / `companion_label` strings (e.g. `"0.7S"`, `"0.75(0.7S)"`).
   Dead load and other loads are **not** combined.
 
 ### Not covered

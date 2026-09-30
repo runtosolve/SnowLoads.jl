@@ -547,6 +547,37 @@ end
     @test occursin("service-level = 0.7 S", t22)
 end
 
+@testset "snow_combination (load-combination terms per standard)" begin
+    sc = SL.snow_combination
+    # ASCE 7-22: LRFD 1.2D + 1.0S, 0.3S companion; ASD D + 0.7S, 0.75(0.7S) companion
+    @test sc(:ASCE7_22, :LRFD) == (design = 1.0, companion = 0.3,
+            principal_label = "1.0S", companion_label = "0.3S")
+    @test sc(:ASCE7_22, :ASD).design == 0.7
+    @test sc(:ASCE7_22, :ASD).companion == 0.75
+    @test sc(:ASCE7_22, :ASD).principal_label == "0.7S"
+    @test sc(:ASCE7_22, :ASD).companion_label == "0.75(0.7S)"
+    # ASCE 7-16: LRFD 1.2D + 1.6S, 0.5S companion; ASD D + S, 0.75S companion
+    @test sc(:ASCE7_16, :LRFD).design == 1.6
+    @test sc(:ASCE7_16, :LRFD).principal_label == "1.6S"
+    @test sc(:ASCE7_16, :LRFD).companion_label == "0.5S"
+    @test sc(:ASCE7_16, :ASD).design == 1.0
+    @test sc(:ASCE7_16, :ASD).principal_label == "S"
+    @test sc(:ASCE7_16, :ASD).companion_label == "0.75S"
+    # design factor always matches design_factor
+    for code in (:ASCE7_22, :ASCE7_16), m in (:ASD, :LRFD)
+        @test sc(code, m).design == SL.design_factor(code, m)
+    end
+    # companion terms reproduce the code's nominal-S coefficients when applied to S_d = design * S
+    S = 40.0
+    for (code, m, expected) in ((:ASCE7_22, :LRFD, 0.3 * S), (:ASCE7_22, :ASD, 0.75 * 0.7 * S),
+                                (:ASCE7_16, :LRFD, 0.5 * S), (:ASCE7_16, :ASD, 0.75 * S))
+        x = sc(code, m)
+        @test x.companion * (x.design * S) ≈ expected
+    end
+    # standards that are not built yet
+    @test_throws ErrorException sc(:NBCC_2020, :ASD)
+end
+
 @testset "Interactive script (stdin driven)" begin
     # answers: code, method, roof, RC, pg, terrain, exposure, thermal, [R], ...
     # 1) ASCE 7-22, ASD, flat, RC II, pg 20, terrain C, fully exposed, unheated (1.2), W=100

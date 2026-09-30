@@ -99,6 +99,45 @@ const PG_BASIS = Dict(
     :ASCE7_16 => (level = :service,  service = 1.0, ultimate = 1.6),
 )
 
+# Load-combination factor on snow when it is a COMPANION load (with wind or live load),
+# from the basic combinations of each standard:
+#   ASCE 7-22: LRFD 0.3 S (Sec. 2.3.1 eqs. 2a, 4a);  ASD 0.75 (0.7 S) (Sec. 2.4.1 eqs. 4a, 6a)
+#   ASCE 7-16: LRFD 0.5 S (Sec. 2.3.2 eqs. 2, 4);    ASD 0.75 S       (Sec. 2.4.1 eqs. 4, 6)
+# LRFD values multiply the ultimate-level snow load; ASD values multiply the
+# service-level (design-level) snow load.
+const SNOW_COMPANION = Dict(
+    :ASCE7_22 => (LRFD = 0.3, ASD = 0.75),
+    :ASCE7_16 => (LRFD = 0.5, ASD = 0.75),
+)
+
+
+"""
+    snow_combination(code::Symbol, method::Symbol)
+
+Snow terms for the load combinations of standard `code`, for scripts that combine
+the snow load with dead, live and wind loads. Load combinations should use the
+snow load `S_d = factor * S` (the design-level snow load, `result.factor * load`),
+where `factor = design_factor(code, method)`, and then:
+
+  * principal snow combination  ->  `S_d`                    (label `principal_label`)
+  * companion snow combination  ->  `companion * S_d`        (label `companion_label`)
+
+So no standard-specific snow factor (0.7, 1.0, 1.6, 0.3, 0.5, 0.75) has to be
+hard-coded in the calling script.
+"""
+function snow_combination(code::Symbol, method::Symbol)
+    haskey(PG_BASIS, code) || not_implemented(code)
+    d = design_factor(code, method)
+    c = getproperty(SNOW_COMPANION[code], method)
+    companion = method == :LRFD ? c / d : c          # relative to the design-level snow load
+    principal_label = d == 1.0 && method == :ASD ? "S" : string(fmt_factor_S(d), "S")
+    companion_label = method == :LRFD ? string(fmt_factor_S(c), "S") :
+                      (d == 1.0 ? "0.75S" : string("0.75(", fmt_factor_S(d), "S)"))
+    return (design = d, companion = companion,
+            principal_label = principal_label, companion_label = companion_label)
+end
+fmt_factor_S(x) = x == round(x) ? string(Int(x), ".0") : string(x)
+
 "Factor applied to the computed snow load S to reach the requested design level."
 design_factor(key::Symbol, method::Symbol) =
     method == :LRFD ? PG_BASIS[key].ultimate :
