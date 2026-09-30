@@ -19,11 +19,18 @@ The other standards are listed but intentionally blank for now.
 
 ## Usage
 
-Install (once the repository is on GitHub; replace `<user>`):
+Install from the RunToSolve registry (add the registry once per machine):
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/<user>/SnowLoads.jl")
+Pkg.Registry.add(RegistrySpec(url = "https://github.com/runtosolve/RunToSolveJuliaRegistry"))
+Pkg.add("SnowLoads")
+```
+
+Or directly from GitHub:
+
+```julia
+Pkg.add(url = "https://github.com/runtosolve/SnowLoads.jl")
 ```
 
 Interactive (US customary units: psf, ft, pcf):
